@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"math/rand"
 	"os"
 	"time"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/knipferrc/teacup/filetree"
 
 	shell "github.com/ipfs/go-ipfs-api"
 )
@@ -59,10 +59,20 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	fmt.Fprintf(w, fn(str))
 }
 
+type sessionState int
+
+const (
+	uiState sessionState = iota
+	showPeerState
+)
+
 type model struct {
-	list     list.Model
-	choice   string
-	quitting bool
+	filetree  filetree.Bubble
+	list      list.Model
+	choice    string
+	quitting  bool
+	activeBox int
+	state     sessionState
 }
 
 var sh *shell.Shell
@@ -71,31 +81,6 @@ var ncalls int
 var _ = time.ANSIC
 
 type peerInfo []shell.SwarmConnInfo
-
-// type peerInfo string
-
-func initRand() {
-	rand.Seed(time.Now().UnixNano())
-
-}
-
-var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-
-func RandStringRunes(n int) string {
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letterRunes[rand.Intn(len(letterRunes))]
-	}
-	return string(b)
-}
-
-//
-/*
-- Want to: update list of connected peers
-- Approach:
-	-
-
-*/
 
 func generateSwarmMsg(m model) func() tea.Msg {
 	return func() tea.Msg {
@@ -110,7 +95,6 @@ func generateSwarmMsg(m model) func() tea.Msg {
 		}
 
 		return peerInfo(swarm.Peers)
-		// return peerInfo(RandStringRunes(10))
 	}
 }
 
@@ -124,66 +108,92 @@ func (m model) getSwarmPeers() tea.Cmd {
 }
 
 func (m model) Init() tea.Cmd {
-	return generateSwarmMsg(m)
+	return tea.Batch(m.filetree.Init(),
+		generateSwarmMsg(m))
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
+	var (
+		cmd  tea.Cmd
+		cmds []tea.Cmd
+	)
 
 	switch msg := msg.(type) {
 
 	case peerInfo:
-		// m.list.InsertItem(0, item(msg))
 		peers := []list.Item{}
 		for i := 0; i < len(msg); i++ {
 			peers = append(peers, item(msg[i].Peer))
 		}
 		m.list.SetItems(peers)
 		m.list.Update(msg)
-
-		return m, m.getSwarmPeers()
+		cmds = append(cmds, m.getSwarmPeers())
+		// return m, m.getSwarmPeers()
 
 	case tea.WindowSizeMsg:
+		m.filetree.SetSize(msg.Width/2, msg.Height)
 		m.list.SetWidth(msg.Width)
-		return m, nil
+		// return m, nil
 
 	case tea.KeyMsg:
 		switch keypress := msg.String(); keypress {
+		case "tab":
+			m.toggleBox()
 		case "ctrl+c":
 			m.quitting = true
-			return m, tea.Quit
+			cmds = append(cmds, tea.Quit)
+			// return m, tea.Quit
 
 		case "enter":
 			i, ok := m.list.SelectedItem().(item)
 			if ok {
 				m.choice = string(i)
 			}
-			return m, tea.Quit
+			cmds = append(cmds, tea.Quit)
+			// return m, tea.Quit
 		default:
 			m.list, cmd = m.list.Update(msg)
+			// cmds = append(cmds, cmd)
 		}
 	}
 
-	return m, cmd
+	m.filetree, cmd = m.filetree.Update(msg)
+	cmds = append(cmds, cmd)
+
+	return m, tea.Batch(cmds...)
+	// return m, cmd
 }
 
 func (m model) View() string {
-	return "\n" + m.list.View()
+	return lipgloss.JoinHorizontal(lipgloss.Top, m.filetree.View(), m.list.View())
+}
+
+// deactivateALlBubbles sets all bubbles to inactive.
+func (m *model) deactivateAllBubbles() {
+	m.filetree.SetIsActive(false)
+	m.list.SetShowFilter(false)
+}
+
+// toggleBox toggles between the two panes.
+func (m *model) toggleBox() {
+	m.activeBox = (m.activeBox + 1) % 2
+	if m.activeBox == 0 {
+		m.deactivateAllBubbles()
+		m.filetree.SetIsActive(true)
+		print(m.list.FilterValue())
+	} else {
+		m.deactivateAllBubbles()
+		// switch m.state {
+		// case showPeerState:
+		// 	m.deactivateAllBubbles()
+		// 	m.list.SetShowFilter(true)
+		// }
+	}
+
 }
 
 func main() {
-	items := []list.Item{
-		item("Ramen"),
-		item("Tomato Soup"),
-		item("Hamburgers"),
-		item("Cheeseburgers"),
-		item("Currywurst"),
-		item("Okonomiyaki"),
-		item("Pasta"),
-		item("Fillet Mignon"),
-		item("Caviar"),
-		item("Just Wine"),
-	}
+	items := []list.Item{}
 	const defaultWidth = 20
 
 	l := list.New(items, itemDelegate{}, defaultWidth, listHeight)
@@ -194,7 +204,18 @@ func main() {
 	l.Styles.PaginationStyle = paginationStyle
 	l.Styles.HelpStyle = helpStyle
 
-	m := model{list: l}
+	filetreeModel := filetree.New(
+		true,
+		true,
+		"",
+		"",
+		lipgloss.AdaptiveColor{Light: "#000000", Dark: "63"},
+		lipgloss.AdaptiveColor{Light: "#000000", Dark: "63"},
+		lipgloss.AdaptiveColor{Light: "63", Dark: "63"},
+		lipgloss.AdaptiveColor{Light: "#ffffff", Dark: "#ffffff"},
+	)
+
+	m := model{list: l, filetree: filetreeModel}
 
 	if err := tea.NewProgram(m).Start(); err != nil {
 		fmt.Println("Error running program:", err)
