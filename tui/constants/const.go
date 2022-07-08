@@ -17,9 +17,15 @@ var ErrStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#bd534b")).Render
 // AlertStyle provides styling for alert messages
 var AlertStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("62")).Render
 
+// TODO: Might be better to implement pageID's as an integer instead?
+type NavMsg struct {
+	PageTitle string
+}
+
 type keymap struct {
 	Navigate key.Binding
 	Enter    key.Binding
+	Back     key.Binding
 }
 
 // Keymap reusable key mappings shared across models
@@ -31,5 +37,9 @@ var Keymap = keymap{
 	Enter: key.NewBinding(
 		key.WithKeys("enter"),
 		key.WithHelp("enter", "select"),
+	),
+	Back: key.NewBinding(
+		key.WithKeys("esc"),
+		key.WithHelp("esc", "back"),
 	),
 }

@@ -1,9 +1,14 @@
 package statusui
 
-import tea "github.com/charmbracelet/bubbletea"
+import (
+	"ipfs-tui/tui/constants"
 
-func selectPage() tea.Cmd {
+	tea "github.com/charmbracelet/bubbletea"
+)
+
+// SelectPage() returns the selected page back to the MainModel
+func SelectPage(pageTitle string) tea.Cmd {
 	return func() tea.Msg {
-		return SelectMsg{pageID: 4}
+		return constants.NavMsg{PageTitle: pageTitle}
 	}
 }

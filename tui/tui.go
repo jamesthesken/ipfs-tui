@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"ipfs-tui/tui/constants"
 	"ipfs-tui/tui/filesui"
 	"ipfs-tui/tui/statusui"
 	"log"
@@ -68,8 +69,13 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.windowSize = msg // pass this along to the entry view so it uses the full window size when it's initialized
-	case statusui.SelectMsg:
-		m.state = filesView
+	case constants.NavMsg:
+		if msg.PageTitle == "Index" {
+			m.state = statusView
+		}
+		if msg.PageTitle == "Files" {
+			m.state = filesView
+		}
 	}
 
 	switch m.state {
@@ -83,7 +89,6 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = newCmd
 
 	case filesView:
-		// m.file = filesui.New(p)
 		newFile, newCmd := m.file.Update(msg)
 		fileModel, ok := newFile.(filesui.Model)
 		if !ok {
@@ -101,6 +106,8 @@ func (m MainModel) View() string {
 	switch m.state {
 	case filesView:
 		return m.file.View()
+	case statusView:
+		return m.status.View()
 	default:
 		return m.status.View()
 	}

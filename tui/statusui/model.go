@@ -14,7 +14,7 @@ import (
 const listHeight = 14
 
 var (
-	titleStyle        = lipgloss.NewStyle().MarginLeft(2)
+	titleStyle        = lipgloss.NewStyle().MarginLeft(2).PaddingTop(5)
 	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
 	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
 	paginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
@@ -23,9 +23,6 @@ var (
 )
 
 type item string
-type SelectMsg struct {
-	pageID int
-}
 
 func (i item) FilterValue() string { return "" }
 
@@ -76,7 +73,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case key.Matches(msg, constants.Keymap.Enter):
-			cmd = selectPage()
+			i, ok := m.list.SelectedItem().(item)
+			if ok {
+				cmd = SelectPage(string(i))
+			}
 		default:
 			m.list, cmd = m.list.Update(msg)
 		}
@@ -94,12 +94,13 @@ func New() tea.Model {
 	items := []list.Item{
 		item("Files"),
 		item("Peers"),
+		item("Settings"),
 	}
 
 	const defaultWidth = 20
 
 	l := list.New(items, itemDelegate{}, defaultWidth, listHeight)
-	l.Title = "IFPS"
+	l.Title = "Welcome to IPFS!"
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
 	l.Styles.Title = titleStyle
