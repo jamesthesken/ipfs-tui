@@ -26,10 +26,10 @@ go build
 ## Acknowledgements
 
 Libraries used:
-[Bubble Tea](https://github.com/charmbracelet/bubbletea)
-[teacup](https://github.com/knipferrc/teacup)
-[go-ipfs-api](https://github.com/ipfs/go-ipfs-api)
+* [Bubble Tea](https://github.com/charmbracelet/bubbletea)
+* [teacup](https://github.com/knipferrc/teacup)
+* [go-ipfs-api](https://github.com/ipfs/go-ipfs-api)
 
 The structure of this project heavily follows:
-[PJ (Bubble Tea Project)](https://github.com/bashbunni/pjs)
-[fm (Bubble Tea Project)](https://github.com/knipferrc/fm)
+* [PJ (Bubble Tea Project)](https://github.com/bashbunni/pjs)
+* [fm (Bubble Tea Project)](https://github.com/knipferrc/fm)
