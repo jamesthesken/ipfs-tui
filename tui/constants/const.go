@@ -23,9 +23,10 @@ type NavMsg struct {
 }
 
 type keymap struct {
-	Navigate key.Binding
-	Enter    key.Binding
-	Back     key.Binding
+	Navigate   key.Binding
+	Enter      key.Binding
+	Back       key.Binding
+	ToggleFile key.Binding
 }
 
 // Keymap reusable key mappings shared across models
@@ -41,5 +42,9 @@ var Keymap = keymap{
 	Back: key.NewBinding(
 		key.WithKeys("esc"),
 		key.WithHelp("esc", "back"),
+	),
+	ToggleFile: key.NewBinding(
+		key.WithKeys("t"),
+		key.WithHelp("t", "toggle info"),
 	),
 }

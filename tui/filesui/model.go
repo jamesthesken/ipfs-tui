@@ -6,6 +6,7 @@ import (
 	"io"
 	"ipfs-tui/tui/constants"
 	"ipfs-tui/tui/statusui"
+	"os"
 	"time"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -15,10 +16,18 @@ import (
 	"github.com/knipferrc/teacup/filetree"
 
 	shell "github.com/ipfs/go-ipfs-api"
+	files "github.com/ipfs/go-ipfs-files"
 )
 
 type sessionState int
-type item string
+
+// type item string
+
+type item struct {
+	fileName    string
+	description string
+}
+
 type itemDelegate struct{}
 
 const (
@@ -42,10 +51,8 @@ var (
 )
 
 type Model struct {
-	filetree  filetree.Bubble
-	list      list.Model
-	activeBox int
-	p         *tea.Program
+	filetree filetree.Bubble
+	list     list.Model
 }
 
 func New(p *tea.Program) *Model {
@@ -53,7 +60,7 @@ func New(p *tea.Program) *Model {
 	const defaultWidth = 20
 
 	l := list.New(items, itemDelegate{}, defaultWidth, listHeight)
-	l.Title = "Connected Peers"
+	l.Title = "IPFS Files"
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
 	l.Styles.Title = titleStyle
@@ -63,7 +70,7 @@ func New(p *tea.Program) *Model {
 	filetreeModel := filetree.New(
 		true,
 		true,
-		"",
+		"./",
 		"",
 		lipgloss.AdaptiveColor{Light: "#000000", Dark: "63"},
 		lipgloss.AdaptiveColor{Light: "#000000", Dark: "63"},
@@ -88,7 +95,7 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		return
 	}
 
-	str := fmt.Sprintf("%s", i)
+	str := fmt.Sprintf("%s", i.fileName)
 
 	fn := itemStyle.Render
 	if index == m.Index() {
@@ -107,33 +114,40 @@ var _ = time.ANSIC
 
 type peerInfo []shell.SwarmConnInfo
 
-func generateSwarmMsg(m Model) func() tea.Msg {
-	return func() tea.Msg {
-		sh = shell.NewShell("localhost:5001")
-
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		swarm, err := sh.SwarmPeers(ctx)
-		if err != nil {
-			fmt.Errorf("Error, %s", err)
-		}
-
-		return peerInfo(swarm.Peers)
+func addFile(ctx context.Context, path string, fileName string) string {
+	sh := shell.NewShell("localhost:5001")
+	file, err := os.Open(path)
+	if err != nil {
+		fmt.Print(err)
 	}
-}
+	fileReader := files.NewReaderFile(file)
 
-// doTick()
-func (m Model) getSwarmPeers() tea.Cmd {
-	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
-		return generateSwarmMsg(m)()
-	})
+	cid, err := sh.Add(fileReader)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %s", err)
+		os.Exit(1)
+	}
 
+	ipfsPath := fmt.Sprintf("/ipfs/%s", cid)
+	newPath := fmt.Sprintf("/%s", fileName)
+
+	err = sh.FilesCp(ctx, ipfsPath, newPath)
+	if err != nil {
+		err = fmt.Errorf("error: %s", err)
+		fmt.Print(err)
+	}
+
+	// err = sh.FilesWrite(ctx, ipfsPath, fileReader)
+	// if err != nil {
+	// 	err = fmt.Errorf("Error: %s", err)
+	// 	fmt.Print(err)
+	// }
+
+	return cid
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(m.filetree.Init(),
-		generateSwarmMsg(m))
+	return m.filetree.Init()
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -143,16 +157,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 
 	switch msg := msg.(type) {
-
-	case peerInfo:
-		peers := []list.Item{}
-		for i := 0; i < len(msg); i++ {
-			peers = append(peers, item(msg[i].Peer))
-		}
-		m.list.SetItems(peers)
-		m.list.Update(msg)
-		cmds = append(cmds, m.getSwarmPeers())
-
 	case tea.WindowSizeMsg:
 		m.filetree.SetSize(msg.Width/2, msg.Height)
 		m.list.SetWidth(msg.Width)
@@ -163,6 +167,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case key.Matches(msg, constants.Keymap.Back):
 			cmd = statusui.SelectPage("Index")
+		case key.Matches(msg, constants.Keymap.Enter):
+			ctx := context.Background()
+			selectedFile := m.filetree.GetSelectedItem()
+			listSize := len(m.list.Items())
+			// ctx = context.WithValue(ctx, "path", selectedFile)
+			cid := addFile(ctx, selectedFile.FileName(), selectedFile.ShortName())
+			m.list.InsertItem(listSize+1,
+				item{
+					fileName:    cid,
+					description: selectedFile.Description(),
+				})
+		case key.Matches(msg, constants.Keymap.ToggleFile):
 
 		default:
 			m.list, cmd = m.list.Update(msg)
@@ -173,35 +189,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
-	// return m, cmd
 }
 
 func (m Model) View() string {
-	return lipgloss.JoinHorizontal(lipgloss.Top, m.filetree.View(), m.list.View())
-	// formatted := lipgloss.JoinHorizontal(lipgloss.Top, m.filetree.View(), m.list.View())
-	// return constants.DocStyle.Render(formatted)
-}
-
-// deactivateALlBubbles sets all bubbles to inactive.
-func (m *Model) deactivateAllBubbles() {
-	m.filetree.SetIsActive(false)
-	m.list.SetShowFilter(false)
-}
-
-// toggleBox toggles between the two panes.
-func (m *Model) toggleBox() {
-	m.activeBox = (m.activeBox + 1) % 2
-	if m.activeBox == 0 {
-		m.deactivateAllBubbles()
-		m.filetree.SetIsActive(true)
-		print(m.list.FilterValue())
-	} else {
-		m.deactivateAllBubbles()
-		// switch m.state {
-		// case showPeerState:
-		// 	m.deactivateAllBubbles()
-		// 	m.list.SetShowFilter(true)
-		// }
-	}
-
+	formatted := lipgloss.JoinHorizontal(lipgloss.Top, m.filetree.View(), m.list.View())
+	return constants.DocStyle.Render(formatted)
 }
