@@ -7,7 +7,6 @@ import (
 	"ipfs-tui/tui/constants"
 	"ipfs-tui/tui/statusui"
 	"os"
-	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -20,8 +19,6 @@ import (
 )
 
 type sessionState int
-
-// type item string
 
 type item struct {
 	fileName    string
@@ -107,14 +104,12 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	fmt.Fprintf(w, fn(str))
 }
 
-var sh *shell.Shell
-var ncalls int
-
-var _ = time.ANSIC
-
-type peerInfo []shell.SwarmConnInfo
-
+/*
+	addFile() returns the CID of a file added to IPFS
+*/
+// TODO: Clean up error handling!
 func addFile(ctx context.Context, path string, fileName string) string {
+	// Opens a 'shell' to the local IPFS node
 	sh := shell.NewShell("localhost:5001")
 	file, err := os.Open(path)
 	if err != nil {
@@ -128,20 +123,20 @@ func addFile(ctx context.Context, path string, fileName string) string {
 		os.Exit(1)
 	}
 
+	// When referencing files added to ipfs, you can get them at /ipfs/<cid>
 	ipfsPath := fmt.Sprintf("/ipfs/%s", cid)
+
+	// Human-readable name in the / directory of the MFS
+	// TODO: allow the user to select which directory this file will go to
 	newPath := fmt.Sprintf("/%s", fileName)
 
+	// TODO: Look into utilizing FilesWrite to write directly to IPFS' MFS
+	// FilesCp copies the IPFS file we just added to the MFS.
 	err = sh.FilesCp(ctx, ipfsPath, newPath)
 	if err != nil {
 		err = fmt.Errorf("error: %s", err)
 		fmt.Print(err)
 	}
-
-	// err = sh.FilesWrite(ctx, ipfsPath, fileReader)
-	// if err != nil {
-	// 	err = fmt.Errorf("Error: %s", err)
-	// 	fmt.Print(err)
-	// }
 
 	return cid
 }
