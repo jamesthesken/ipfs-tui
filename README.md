@@ -3,6 +3,9 @@
 ![file ui](./assets/file_ui.png)
 
 ## Build/Run
+
+Before starting, be sure your local IPFS node is up and running.
+
 ```
 # clone the repo
 git clone https://github.com/jamesthesken/ipfs-tui
@@ -60,6 +63,7 @@ The structure of this project heavily follows:
 * Add/Remove files to and from IFPS
 * Display IPFS node status (connected peers, incoming data, etc.)
 * Support local and remote pinning
+* Spawn an IPFS node directly from the TUI - similar to IPFS GUI
 * Allow user to select color themes
 * Possibly more...
 
