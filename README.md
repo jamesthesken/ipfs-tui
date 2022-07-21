@@ -1,7 +1,5 @@
 # ipfs-tui
-Terminal User Interface for Go-IPFS
-
-![main menu](./assets/main_menu.png)
+## The Terminal User Interface for Go-IPFS 📠
 ![file ui](./assets/file_ui.png)
 
 ## Build/Run
