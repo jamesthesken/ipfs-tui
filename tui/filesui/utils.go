@@ -4,15 +4,15 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/charmbracelet/bubbles/list"
+	tea "github.com/charmbracelet/bubbletea"
 	shell "github.com/ipfs/go-ipfs-api"
 	files "github.com/ipfs/go-ipfs-files"
 )
 
-/*
-	getIpfsFiles returns all files in the local IPFS node's root directory.
-*/
+// getIpfsFiles returns all files in the local IPFS node's root directory.
 func getIpfsFiles() []list.Item {
 	// Opens a 'shell' to the local IPFS node
 	sh := shell.NewShell("localhost:5001")
@@ -38,9 +38,7 @@ func getIpfsFiles() []list.Item {
 
 }
 
-/*
-	addFile returns the CID of a file added to IPFS
-*/
+// addFile returns the CID of a file added to IPFS
 func addFile(ctx context.Context, path string, fileName string) string {
 	// Opens a 'shell' to the local IPFS node
 	sh := shell.NewShell("localhost:5001")
@@ -72,4 +70,29 @@ func addFile(ctx context.Context, path string, fileName string) string {
 	}
 
 	return cid
+}
+
+type peerInfo []shell.SwarmConnInfo
+
+func getIpfsStats() tea.Msg {
+	// Opens a 'shell' to the local IPFS node
+	sh := shell.NewShell("localhost:5001")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	swarm, err := sh.SwarmPeers(ctx)
+	if err != nil {
+		err = fmt.Errorf("error, %s", err)
+		fmt.Print(err)
+		os.Exit(1)
+	}
+
+	return peerInfo(swarm.Peers)
+}
+
+func (m Model) getSwarmPeers() tea.Cmd {
+	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
+		return getIpfsStats()
+	})
+
 }

@@ -16,6 +16,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds []tea.Cmd
 	)
 	switch msg := msg.(type) {
+	case peerInfo:
+		m.connectedPeers = len(msg)
+		return m, m.getSwarmPeers()
+
 	case tea.WindowSizeMsg:
 		m.filetree.SetSize(msg.Width/2, msg.Height)
 		// m.list.SetWidth(msg.Width/2)

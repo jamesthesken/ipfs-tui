@@ -12,6 +12,8 @@ import (
 
 type sessionState int
 
+type peer string
+
 type item struct {
 	fileName    string
 	description string
@@ -29,38 +31,22 @@ const (
 )
 
 var (
-	titleStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("#874BFD")).
-			Padding(1, 0).
-			BorderTop(true).
-			BorderLeft(true).
-			BorderRight(true).
-			BorderBottom(true)
 	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
 	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("#ffff"))
 	paginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
 	helpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(4).PaddingBottom(1)
-	quitTextStyle     = lipgloss.NewStyle().Margin(1, 0, 2, 4)
 )
 
 type Model struct {
-	filetree    filetree.Bubble
-	list        list.Model
-	state       sessionState
-	activeBox   int
-	borderColor lipgloss.AdaptiveColor
+	filetree       filetree.Bubble
+	list           list.Model
+	state          sessionState
+	activeBox      int
+	connectedPeers int
+	borderColor    lipgloss.AdaptiveColor
 }
 
 func New() tea.Model {
-	items := getIpfsFiles()
-	const defaultWidth = 20
-
-	l := list.New(items, itemDelegate{}, defaultWidth, listHeight)
-	l.Title = "IPFS Files"
-	l.SetShowStatusBar(false)
-	l.SetFilteringEnabled(false)
-	l.Styles.Title = titleStyle
-	l.Styles.PaginationStyle = paginationStyle
-	l.Styles.HelpStyle = helpStyle
 
 	filetreeModel := filetree.New(
 		true,
@@ -72,6 +58,16 @@ func New() tea.Model {
 		lipgloss.AdaptiveColor{Light: "63", Dark: "63"},
 		lipgloss.AdaptiveColor{Light: "#ffffff", Dark: "#ffffff"},
 	)
+
+	items := getIpfsFiles()
+	const defaultWidth = 20
+
+	l := list.New(items, itemDelegate{}, defaultWidth, listHeight)
+	l.Title = "IPFS Files"
+	l.SetShowStatusBar(false)
+	l.SetFilteringEnabled(false)
+	l.Styles.PaginationStyle = paginationStyle
+	l.Styles.HelpStyle = helpStyle
 
 	m := Model{
 		list:     l,
