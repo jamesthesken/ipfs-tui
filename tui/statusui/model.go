@@ -112,7 +112,6 @@ func New() tea.Model {
 	m.list.AdditionalShortHelpKeys = func() []key.Binding {
 		return []key.Binding{
 			constants.Keymap.Enter,
-			constants.Keymap.Navigate,
 		}
 	}
 

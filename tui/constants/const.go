@@ -23,7 +23,7 @@ type NavMsg struct {
 }
 
 type keymap struct {
-	Navigate   key.Binding
+	Tab        key.Binding
 	Enter      key.Binding
 	Back       key.Binding
 	ToggleFile key.Binding
@@ -31,7 +31,7 @@ type keymap struct {
 
 // Keymap reusable key mappings shared across models
 var Keymap = keymap{
-	Navigate: key.NewBinding(
+	Tab: key.NewBinding(
 		key.WithKeys("tab"),
 		key.WithHelp("tab", "nav"),
 	),
