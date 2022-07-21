@@ -51,9 +51,9 @@ func StartTea() {
 // New initialize the main model for your program
 func New() MainModel {
 	return MainModel{
-		state:  statusView,
+		state:  filesView,
 		status: statusui.New(),
-		file:   filesui.New(p),
+		file:   filesui.New(),
 	}
 }
 
@@ -68,7 +68,7 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.windowSize = msg // pass this along to the entry view so it uses the full window size when it's initialized
+		_, cmd = m.file.Update(msg)
 	case constants.NavMsg:
 		if msg.PageTitle == "Index" {
 			m.state = statusView
@@ -77,6 +77,7 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.state = filesView
 		}
 	}
+	cmds = append(cmds, cmd)
 
 	switch m.state {
 	case statusView:
@@ -109,6 +110,6 @@ func (m MainModel) View() string {
 	case statusView:
 		return m.status.View()
 	default:
-		return m.status.View()
+		return m.file.View()
 	}
 }
